@@ -67,17 +67,19 @@ MARQPONTO_PASS=sua_senha
 LOGIN_URL=https://web.marqponto.com.br/
 PONTO_URL=https://web.marqponto.com.br/clock-ins
 
-# Telegram
+# Telegram (notificações e comandos)
 TELEGRAM_BOT_TOKEN=token_do_botfather
 TELEGRAM_CHAT_ID=seu_chat_id
 
-# GitHub Gist
+# GitHub Gist (persistência de datas desativadas)
 GH_GIST_TOKEN=token_com_scope_gist
 GIST_ID=id_do_gist_secreto
 
-# Geolocalização do escritório
-GEO_LAT=-3.054679
-GEO_LNG=-60.032772
+# Geolocalização (por dia da semana — Seg/Ter/Qua e Qui/Sex podem ter coordenadas diferentes)
+GEO_LAT_SEG_TER_QUA=-3.0920902438448383
+GEO_LNG_SEG_TER_QUA=-60.00604977562166
+GEO_LAT_QUI_SEX=-3.054679
+GEO_LNG_QUI_SEX=-60.032772
 
 # Apenas para VPS (deixe em branco localmente)
 # PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
@@ -184,8 +186,16 @@ No repositório, acesse **Settings → Secrets and variables → Actions** e adi
 | `TELEGRAM_CHAT_ID` | Seu Chat ID |
 | `GH_GIST_TOKEN` | Token GitHub (scope: gist) |
 | `GIST_ID` | ID do Gist secreto |
-| `GEO_LAT` | Latitude do escritório (ex: `-3.054679`) |
-| `GEO_LNG` | Longitude do escritório (ex: `-60.032772`) |
+| `GEO_LAT_SEG_TER_QUA` | Latitude Seg/Ter/Qua (ex: `-3.0920902438448383`) |
+| `GEO_LNG_SEG_TER_QUA` | Longitude Seg/Ter/Qua |
+| `GEO_LAT_QUI_SEX` | Latitude Qui/Sex (ex: `-3.054679`) |
+| `GEO_LNG_QUI_SEX` | Longitude Qui/Sex |
+
+**Variables (opcional):**
+
+| Variable | Valor |
+|---|---|
+| `SISTEMA_PONTO` | Nome do sistema (prefixo nas mensagens e comandos, ex: `Irede`) |
 | `DRY_RUN` | (opcional) `true` para simular sem clicar |
 
 ### 2. Execução manual (dispatch)
