@@ -54,9 +54,9 @@ async function sendTelegram(message) {
  * Notifica sucesso na batida de ponto
  */
 async function notifySuccess() {
-  const now = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+  const now = new Date().toLocaleString('pt-BR', { timeZone: 'America/Manaus' });
   const prefix = config.sistemaPonto ? `${config.sistemaPonto} - ` : '';
-  await sendTelegram(`✅ <b>${prefix}Ponto registrado!</b>\n📅 ${now} (Brasília)`);
+  await sendTelegram(`✅ <b>${prefix}Ponto registrado!</b>\n📅 ${now} (Manaus)`);
 }
 
 /**
@@ -64,9 +64,9 @@ async function notifySuccess() {
  * @param {string} errorMsg - Mensagem de erro
  */
 async function notifyError(errorMsg) {
-  const now = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+  const now = new Date().toLocaleString('pt-BR', { timeZone: 'America/Manaus' });
   const prefix = config.sistemaPonto ? `${config.sistemaPonto} - ` : '';
-  await sendTelegram(`❌ <b>${prefix}Erro ao bater ponto</b>\n📅 ${now} (Brasília)\n⚠️ ${errorMsg}`);
+  await sendTelegram(`❌ <b>${prefix}Erro ao bater ponto</b>\n📅 ${now} (Manaus)\n⚠️ ${errorMsg}`);
 }
 
 module.exports = { sendTelegram, notifySuccess, notifyError };
