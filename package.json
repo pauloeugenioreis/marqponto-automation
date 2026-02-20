@@ -1,0 +1,19 @@
+{
+  "name": "marqponto-automation",
+  "version": "1.0.0",
+  "description": "Automação de batida de ponto na plataforma MarqPonto",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "start:visible": "cross-env HEADLESS=false node src/index.js",
+    "debug": "cross-env HEADLESS=false DEBUG=true node src/index.js"
+  },
+  "dependencies": {
+    "puppeteer": "^23.0.0",
+    "dotenv": "^16.4.0",
+    "winston": "^3.11.0"
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3"
+  }
+}
