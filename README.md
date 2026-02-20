@@ -180,22 +180,22 @@ No repositório, acesse **Settings → Secrets and variables → Actions** e adi
 |---|---|
 | `MARQPONTO_USER` | Seu e-mail MarqPonto |
 | `MARQPONTO_PASS` | Sua senha |
-| `LOGIN_URL` | URL de login do MarqPonto |
-| `PONTO_URL` | URL da página de ponto |
 | `TELEGRAM_BOT_TOKEN` | Token do bot |
 | `TELEGRAM_CHAT_ID` | Seu Chat ID |
 | `GH_GIST_TOKEN` | Token GitHub (scope: gist) |
 | `GIST_ID` | ID do Gist secreto |
-| `GEO_LAT_SEG_TER_QUA` | Latitude Seg/Ter/Qua (ex: `-3.0920902438448383`) |
-| `GEO_LNG_SEG_TER_QUA` | Longitude Seg/Ter/Qua |
-| `GEO_LAT_QUI_SEX` | Latitude Qui/Sex (ex: `-3.054679`) |
-| `GEO_LNG_QUI_SEX` | Longitude Qui/Sex |
 
-**Variables (opcional):**
+**Variables:**
 
 | Variable | Valor |
 |---|---|
-| `SISTEMA_PONTO` | Nome do sistema (prefixo nas mensagens e comandos, ex: `Irede`) |
+| `SISTEMA_PONTO` | Nome do sistema (prefixo nas mensagens e comandos - `Irede`) |
+| `LOGIN_URL` | URL de login do MarqPonto  - `https://web.marqponto.com.br` |
+| `PONTO_URL` | URL da página de ponto - `https://web.marqponto.com.br/clock-ins` |
+| `GEO_LAT_SEG_TER_QUA` | Latitude Seg/Ter/Qua - `-3.0920902438448383` |
+| `GEO_LNG_SEG_TER_QUA` | Longitude Seg/Ter/Qua - `-60.00604977562166` |
+| `GEO_LAT_QUI_SEX` | Latitude Qui/Sex `-3.054679` |
+| `GEO_LNG_QUI_SEX` | Longitude Qui/Sex `-60.032772` |
 | `DRY_RUN` | (opcional) `true` para simular sem clicar |
 
 ### 2. Execução manual (dispatch)
