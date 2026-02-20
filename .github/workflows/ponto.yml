@@ -46,9 +46,10 @@ jobs:
           GIST_ID: ${{ secrets.GIST_ID }}
           GEO_LAT: ${{ secrets.GEO_LAT }}
           GEO_LNG: ${{ secrets.GEO_LNG }}
+          HEADLESS: ${{ vars.HEADLESS }}
           DEBUG: ${{ vars.DEBUG }}
           DRY_RUN: ${{ vars.DRY_RUN }}
-          HEADLESS: ${{ vars.HEADLESS }}
+          SISTEMA_PONTO: ${{ vars.SISTEMA_PONTO }}
           CI: 'true'
         run: node src/index.js
 
