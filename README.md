@@ -220,6 +220,68 @@ on:
 
 > **Atenção:** O GitHub Actions pode atrasar execuções agendadas em até 60 minutos, especialmente em contas gratuitas. Para máxima confiabilidade, prefira rodar em VPS ou cron local.
 
+### 4. (Opcional) Rodar com timezone fixo via Docker (GHCR)
+
+Se você precisar que o browser (Puppeteer/Chromium) rode com timezone **America/Manaus** dentro do GitHub Actions, você pode usar a imagem Docker (`Dockerfile.actions`) e publicá-la no **GitHub Container Registry (GHCR)**.
+
+#### 4.1 Build local da imagem
+
+Na raiz do projeto:
+
+```bash
+docker build -f Dockerfile.actions -t marqponto-automation:tz-manaus .
+```
+
+#### 4.2 Login no GHCR e push
+
+1) Faça login no GHCR:
+
+```bash
+echo "SEU_TOKEN_GITHUB" | docker login ghcr.io -u SEU_USUARIO --password-stdin
+```
+
+2) Tagueie e publique:
+
+```bash
+docker tag marqponto-automation:tz-manaus ghcr.io/SEU_USUARIO/marqponto-automation:tz-manaus
+docker push ghcr.io/SEU_USUARIO/marqponto-automation:tz-manaus
+```
+
+> **Token necessário:** o token precisa ter permissão de **publicar packages** (ex.: `write:packages` no token classic).
+
+#### 4.3 Permitir que o GitHub Actions faça pull (evita `unauthorized`/`denied`)
+
+Depois do primeiro push, vá no GitHub em **Profile → Packages → `marqponto-automation` → Settings** e:
+
+- Se o pacote estiver **Private**, habilite acesso do **repositório** ao pacote (ex.: "Actions access"/"Manage Actions access"/"Link repository").
+- Garanta que o repositório `SEU_USUARIO/marqponto-automation` está autorizado a usar esse package.
+
+Sem isso, o `docker pull` dentro do Actions pode falhar com `unauthorized` ou `denied`.
+
+#### 4.4 Ajustes no workflow (`.github/workflows/ponto.yml`)
+
+No workflow, você precisa:
+
+1) Dar permissão de leitura de packages ao `GITHUB_TOKEN`:
+
+```yaml
+permissions:
+  contents: read
+  packages: read
+```
+
+2) Fazer login no GHCR e puxar a imagem:
+
+```yaml
+- name: Login to GitHub Container Registry
+  run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+- name: Pull container image (TZ America/Manaus)
+  run: docker pull ghcr.io/SEU_USUARIO/marqponto-automation:tz-manaus
+```
+
+> **Importante:** você **não precisa cadastrar** `GITHUB_TOKEN` como secret — ele é criado automaticamente pelo GitHub Actions.
+
 ## Agendamento local (Windows — opcional)
 
 Execute como Administrador:
