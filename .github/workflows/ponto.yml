@@ -25,8 +25,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build container (TZ America/Manaus)
-        run: docker build -f Dockerfile.actions -t marqponto-automation:tz-manaus .
+      - name: Pull container image (TZ America/Manaus)
+        run: docker pull ghcr.io/pauloeugenioreis/marqponto-automation:tz-manaus
 
       - name: Run ponto automation (inside container)
         env:
@@ -68,7 +68,7 @@ jobs:
             -e GIST_ID \
             -e CI \
             -v "${PWD}/logs:/app/logs" \
-            marqponto-automation:tz-manaus
+            ghcr.io/pauloeugenioreis/marqponto-automation:tz-manaus
 
       - name: Upload debug screenshots
         if: always()
