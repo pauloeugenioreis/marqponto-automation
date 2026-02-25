@@ -54,7 +54,7 @@ function getBatidaAtual() {
 
 async function login(page) {
   logger.info('Navegando para a página de login MarqPonto...');
-  await page.goto(config.loginUrl, { waitUntil: 'networkidle2' });
+  await page.goto(config.loginUrl, { waitUntil: 'domcontentloaded' });
   await debugScreenshot(page, '01-login-page');
 
   // Aguarda a página carregar completamente
@@ -180,12 +180,12 @@ async function login(page) {
       const text = tag === 'input'
         ? await page.evaluate((e) => (e.value || '').trim().toLowerCase(), el)
         : await page.evaluate((e) => {
-            // Remove spans e outros elementos filhos para pegar só o texto
-            const clone = e.cloneNode(true);
-            const spans = clone.querySelectorAll('span');
-            spans.forEach(s => s.remove());
-            return clone.textContent.trim().toLowerCase();
-          }, el);
+          // Remove spans e outros elementos filhos para pegar só o texto
+          const clone = e.cloneNode(true);
+          const spans = clone.querySelectorAll('span');
+          spans.forEach(s => s.remove());
+          return clone.textContent.trim().toLowerCase();
+        }, el);
       const match = loginButtonTexts.some((t) => text.includes(t));
       if (match) {
         const visible = await page.evaluate((e) => e.offsetParent !== null, el);
@@ -203,11 +203,29 @@ async function login(page) {
   }
 
   await loginBtn.click();
-  logger.info('Botão de login clicado — aguardando redirecionamento...');
+  logger.info('Botão de login clicado — aguardando retorno ao MarqPonto...');
 
-  // Aguarda redirecionamento após login
-  await page.waitForNavigation({ waitUntil: 'networkidle2', timeout: config.timeout });
-  await sleep(3000);
+  // Aguarda sair do SSO e chegar em qualquer página do web.marqponto.com.br
+  // (pode passar por /login?tid=... — não importa, vamos navegar diretamente para o ponto)
+  try {
+    await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: config.timeout });
+  } catch (_) {
+    // ignora timeout parcial — verifica a URL abaixo
+  }
+  await sleep(2000);
+
+  const urlAposLogin = page.url();
+  logger.info(`URL após SSO: ${urlAposLogin}`);
+
+  if (!urlAposLogin.includes('marqponto.com.br') && urlAposLogin.includes('sso.')) {
+    throw new Error(`Login SSO não concluído — ainda no SSO: ${urlAposLogin}`);
+  }
+
+  // Navega diretamente para clock-ins, sem depender do redirect automático (pode ser lento)
+  logger.info(`Navegando diretamente para a página de ponto: ${config.pontoUrl}`);
+  await page.goto(config.pontoUrl, { waitUntil: 'domcontentloaded', timeout: config.timeout });
+  await sleep(8000); // aguarda a SPA Vue.js montar o conteúdo
+
   await debugScreenshot(page, '04-login-complete');
   logger.info(`Login concluído. URL atual: ${page.url()}`);
 }
@@ -217,9 +235,8 @@ async function login(page) {
 // ---------------------------------------------------------------------------
 
 async function registrarPonto(page) {
-  logger.info('Navegando para a página de ponto...');
-  await page.goto(config.pontoUrl, { waitUntil: 'networkidle2', timeout: config.timeout });
-  await sleep(5000); // SPA pode demorar
+  // Página já está em clock-ins (navegação feita no final do login)
+  logger.info('Registrando ponto na página atual...');
   await debugScreenshot(page, '05-ponto-page');
 
   // Log da URL atual e HTML parcial para diagnóstico
@@ -236,7 +253,7 @@ async function registrarPonto(page) {
     // Aguarda o botão aparecer
     await page.waitForSelector(`#${buttonId}`, { visible: true, timeout: config.timeout });
     const button = await page.$(`#${buttonId}`);
-    
+
     if (!button) {
       throw new Error(`Botão com ID ${buttonId} não encontrado`);
     }
@@ -267,7 +284,7 @@ async function registrarPonto(page) {
     return true;
   } catch (err) {
     logger.error(`Erro ao encontrar/clicar no botão ${buttonId}: ${err.message}`);
-    
+
     // Se não encontrou, faz log do HTML para diagnóstico
     try {
       const html = await page.evaluate(() => document.body.innerHTML.substring(0, 3000));
@@ -279,7 +296,7 @@ async function registrarPonto(page) {
     await debugScreenshot(page, '06-ponto-NAO-encontrado');
     logger.error(
       `Não foi possível encontrar o botão de registrar ponto com ID ${buttonId}. ` +
-        'Verifique os logs para diagnóstico.'
+      'Verifique os logs para diagnóstico.'
     );
     return false;
   }
@@ -315,7 +332,7 @@ async function executar() {
   const now = new Date();
   const dayOfWeek = now.getDay(); // 0 = Domingo, 1 = Segunda, ..., 6 = Sábado
   let geoLat, geoLng;
-  
+
   if (dayOfWeek >= 1 && dayOfWeek <= 3) {
     // Segunda (1), Terça (2), Quarta (3)
     geoLat = config.geoLatSegTerQua;
