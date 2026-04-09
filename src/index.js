@@ -247,11 +247,25 @@ async function registrarPonto(page) {
   // Busca o botão pelo ID específico: register-point-button
   // IMPORTANTE: Não usar busca por texto, pois há dois botões com o mesmo texto "Marcar Ponto"
   const buttonId = 'register-point-button';
+  const buttonAppearTimeout = 120000; // 2 minutos
   logger.info(`Buscando botão com ID: ${buttonId}`);
 
   try {
-    // Aguarda o botão aparecer
-    await page.waitForSelector(`#${buttonId}`, { visible: true, timeout: config.timeout });
+    // Aguarda o botão aparecer por até 2 minutos
+    logger.info(`Aguardando até ${buttonAppearTimeout / 1000}s pelo botão ${buttonId} ficar visível...`);
+    try {
+      await page.waitForSelector(`#${buttonId}`, { visible: true, timeout: buttonAppearTimeout });
+    } catch (err) {
+      if (err.name === 'TimeoutError') {
+        logger.warn(
+          `Botão ${buttonId} não apareceu em ${buttonAppearTimeout / 1000}s. Recarregando a página para nova tentativa...`
+        );
+        await page.reload({ waitUntil: 'domcontentloaded', timeout: config.timeout });
+        await debugScreenshot(page, '05-ponto-page-reload');
+      }
+      throw err;
+    }
+
     const button = await page.$(`#${buttonId}`);
 
     if (!button) {
@@ -281,9 +295,20 @@ async function registrarPonto(page) {
     await sleep(500);
     await debugScreenshot(page, '06-ponto-registrado');
     logger.info('Confirmação encontrada: "Registro confirmado".');
-    return true;
+    return { success: true };
   } catch (err) {
-    logger.error(`Erro ao encontrar/clicar no botão ${buttonId}: ${err.message}`);
+    let failureMessage = `Erro ao encontrar/clicar no botão ${buttonId}: ${err.message}`;
+
+    if (err.name === 'TimeoutError') {
+      failureMessage =
+        `Botão com ID ${buttonId} não ficou visível após ${buttonAppearTimeout / 1000} segundos de espera`;
+    } else if (err.message.includes('não encontrado')) {
+      failureMessage = `Botão com ID ${buttonId} não foi encontrado no DOM após a espera`;
+    } else if (err.message.includes('não está visível')) {
+      failureMessage = `Botão com ID ${buttonId} foi encontrado, mas não está visível/clicável`;
+    }
+
+    logger.error(failureMessage);
 
     // Se não encontrou, faz log do HTML para diagnóstico
     try {
@@ -294,11 +319,8 @@ async function registrarPonto(page) {
     }
 
     await debugScreenshot(page, '06-ponto-NAO-encontrado');
-    logger.error(
-      `Não foi possível encontrar o botão de registrar ponto com ID ${buttonId}. ` +
-      'Verifique os logs para diagnóstico.'
-    );
-    return false;
+    logger.error(`${failureMessage}. Verifique os logs para diagnóstico.`);
+    return { success: false, error: failureMessage };
   }
 }
 
@@ -368,13 +390,13 @@ async function executar() {
       await sendTelegram(`${prefixDryRun}🧪 <b>DRY RUN</b> — Login + navegação OK. Botão de ponto <b>não clicado</b>.`);
       logger.info('=== DRY RUN concluído com sucesso ===');
     } else {
-      const pontoOk = await registrarPonto(page);
-      if (pontoOk) {
+      const pontoResult = await registrarPonto(page);
+      if (pontoResult.success) {
         await notifySuccess();
         logger.info('=== Automação concluída com sucesso ===');
       } else {
-        await notifyError('Botão de registrar ponto não encontrado');
-        throw new Error('Botão de registrar ponto não encontrado');
+        await notifyError(pontoResult.error || 'Botão de registrar ponto não encontrado');
+        throw new Error(pontoResult.error || 'Botão de registrar ponto não encontrado');
       }
     }
   } finally {
