@@ -406,7 +406,7 @@ Cria tarefas às 10:00, 13:00, 14:00 e 19:00 (Seg-Sex, horário de Brasília).
 - **GitHub Actions falha?** Verifique os secrets e os logs na aba Actions
 - **VPS: Chromium não encontrado?** Rode `which chromium-browser || which chromium` e ajuste `PUPPETEER_EXECUTABLE_PATH` no `.env`
 - **VPS: Erro intermitente?** O retry automático tenta até 3 vezes. Verifique os logs em `/opt/app/logs/cron.log`
-- **Botão de ponto não encontrado?** O script busca pelo ID `register-point-button`. Se a estrutura da página mudar, verifique os screenshots em modo debug.
+- **Botão de ponto não encontrado?** O script prioriza o ID `register-point-button`, mas também tenta atributos e textos equivalentes. Se ainda falhar, execute com `npm run debug` e verifique os screenshots/logs com o resumo dos botões encontrados.
 
 ## Aviso
 

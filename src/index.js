@@ -29,6 +29,186 @@ async function debugScreenshot(page, name) {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+const pointButtonSelectors = [
+  '#register-point-button',
+  '[data-testid="register-point-button"]',
+  '[data-cy="register-point-button"]',
+  '[aria-label*="ponto" i]',
+  'button[id*="point" i]',
+  'button[id*="ponto" i]',
+  'button[class*="MuiButton" i]',
+  'button',
+  '[role="button"]',
+  'input[type="button"]',
+  'input[type="submit"]',
+];
+
+const exactPointButtonSelectors = pointButtonSelectors.slice(0, 3);
+
+const pointButtonTexts = [
+  'marcar ponto',
+  'registrar ponto',
+  'bater ponto',
+  'registro de ponto',
+  'register point',
+  'clock in',
+];
+
+async function findPointButton(page, timeout) {
+  const findArgs = {
+    exactSelectors: exactPointButtonSelectors,
+    selectors: pointButtonSelectors,
+    texts: pointButtonTexts,
+  };
+
+  await page.waitForFunction(
+    ({ exactSelectors, selectors, texts }) => {
+      const normalize = (value) =>
+        (value || '')
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .toLowerCase();
+
+      const isVisible = (el) => {
+        const style = window.getComputedStyle(el);
+        const rect = el.getBoundingClientRect();
+        return (
+          style.visibility !== 'hidden' &&
+          style.display !== 'none' &&
+          rect.width > 0 &&
+          rect.height > 0
+        );
+      };
+
+      const isClickable = (el) => {
+        const ariaDisabled = el.getAttribute('aria-disabled');
+        return !el.disabled && ariaDisabled !== 'true';
+      };
+
+      const matchesText = (el) => {
+        const text = normalize(el.innerText || el.textContent || el.value || el.getAttribute('aria-label'));
+        return texts.some((candidate) => text.includes(normalize(candidate)));
+      };
+
+      const byExactSelector = exactSelectors
+        .flatMap((selector) => {
+          try {
+            return Array.from(document.querySelectorAll(selector));
+          } catch (_) {
+            return [];
+          }
+        })
+        .find((el) => isVisible(el) && isClickable(el));
+
+      if (byExactSelector) return true;
+
+      const bySelector = selectors
+        .flatMap((selector) => {
+          try {
+            return Array.from(document.querySelectorAll(selector));
+          } catch (_) {
+            return [];
+          }
+        })
+        .find((el) => isVisible(el) && isClickable(el) && matchesText(el));
+
+      if (bySelector) return true;
+
+      return Array.from(document.querySelectorAll('button, [role="button"], input[type="button"], input[type="submit"], a[href]'))
+        .some((el) => isVisible(el) && isClickable(el) && matchesText(el));
+    },
+    { timeout },
+    findArgs
+  );
+
+  const handle = await page.evaluateHandle(({ exactSelectors, selectors, texts }) => {
+    const normalize = (value) =>
+      (value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toLowerCase();
+
+    const isVisible = (el) => {
+      const style = window.getComputedStyle(el);
+      const rect = el.getBoundingClientRect();
+      return (
+        style.visibility !== 'hidden' &&
+        style.display !== 'none' &&
+        rect.width > 0 &&
+        rect.height > 0
+      );
+    };
+
+    const isClickable = (el) => {
+      const ariaDisabled = el.getAttribute('aria-disabled');
+      return !el.disabled && ariaDisabled !== 'true';
+    };
+
+    const matchesText = (el) => {
+      const text = normalize(el.innerText || el.textContent || el.value || el.getAttribute('aria-label'));
+      return texts.some((candidate) => text.includes(normalize(candidate)));
+    };
+
+    const exactCandidate = exactSelectors
+      .flatMap((selector) => {
+        try {
+          return Array.from(document.querySelectorAll(selector));
+        } catch (_) {
+          return [];
+        }
+      })
+      .find((el) => isVisible(el) && isClickable(el));
+
+    if (exactCandidate) return exactCandidate;
+
+    const candidates = [
+      ...selectors.flatMap((selector) => {
+        try {
+          return Array.from(document.querySelectorAll(selector));
+        } catch (_) {
+          return [];
+        }
+      }),
+      ...document.querySelectorAll('button, [role="button"], input[type="button"], input[type="submit"], a[href]'),
+    ];
+
+    return candidates.find((el) => isVisible(el) && isClickable(el) && matchesText(el)) || null;
+  }, findArgs);
+
+  return handle.asElement();
+}
+
+async function logPointButtonDiagnostics(page) {
+  try {
+    const buttons = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('button, [role="button"], input[type="button"], input[type="submit"], a[href]'))
+        .slice(0, 30)
+        .map((el) => {
+          const rect = el.getBoundingClientRect();
+          const text = (el.innerText || el.textContent || el.value || el.getAttribute('aria-label') || '')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .slice(0, 80);
+
+          return {
+            tag: el.tagName.toLowerCase(),
+            id: el.id || '',
+            text,
+            disabled: Boolean(el.disabled || el.getAttribute('aria-disabled') === 'true'),
+            visible: rect.width > 0 && rect.height > 0,
+          };
+        })
+    );
+    logger.info(`Resumo de botões/ações na página: ${JSON.stringify(buttons)}`);
+  } catch (err) {
+    logger.warn(`Não foi possível listar botões para diagnóstico: ${err.message}`);
+  }
+}
+
 /** Retorna o horário da batida atual (08:00, 12:00, 13:00 ou 17:00) em Manaus. */
 function getBatidaAtual() {
   const now = new Date();
@@ -244,42 +424,54 @@ async function registrarPonto(page) {
   const pageTitle = await page.title();
   logger.info(`Título da página: ${pageTitle}`);
 
-  // Busca o botão pelo ID específico: register-point-button
-  // IMPORTANTE: Não usar busca por texto, pois há dois botões com o mesmo texto "Marcar Ponto"
+  // Busca primeiro pelo ID específico e depois por atributos/textos equivalentes.
+  // A ordem dos candidatos mantém #register-point-button como preferência.
   const buttonId = 'register-point-button';
-  const buttonAppearTimeout = 120000; // 2 minutos
-  logger.info(`Buscando botão com ID: ${buttonId}`);
+  const buttonAppearTimeout = 60_000;
+  logger.info(`Buscando botão de ponto. Seletor preferencial: #${buttonId}`);
 
   try {
-    // Aguarda o botão aparecer por até 2 minutos
-    logger.info(`Aguardando até ${buttonAppearTimeout / 1000}s pelo botão ${buttonId} ficar visível...`);
-    try {
-      await page.waitForSelector(`#${buttonId}`, { visible: true, timeout: buttonAppearTimeout });
-    } catch (err) {
-      if (err.name === 'TimeoutError') {
+    let button = null;
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      logger.info(`Aguardando botão de ponto ficar visível/clicável (${attempt}/2)...`);
+      try {
+        button = await findPointButton(page, buttonAppearTimeout);
+        if (button) break;
+      } catch (err) {
+        if (err.name !== 'TimeoutError' || attempt === 2) {
+          throw err;
+        }
+
         logger.warn(
-          `Botão ${buttonId} não apareceu em ${buttonAppearTimeout / 1000}s. Recarregando a página para nova tentativa...`
+          `Botão de ponto não apareceu em ${buttonAppearTimeout / 1000}s. Recarregando a página para nova tentativa...`
         );
-        await page.reload({ waitUntil: 'domcontentloaded', timeout: config.timeout });
+        await logPointButtonDiagnostics(page);
+        await page.reload({ waitUntil: 'networkidle2', timeout: config.timeout });
+        await sleep(5000);
         await debugScreenshot(page, '05-ponto-page-reload');
       }
-      throw err;
     }
-
-    const button = await page.$(`#${buttonId}`);
 
     if (!button) {
-      throw new Error(`Botão com ID ${buttonId} não encontrado`);
+      throw new Error('Botão de ponto não encontrado');
     }
 
-    const visible = await page.evaluate((el) => el.offsetParent !== null, button);
-    if (!visible) {
-      throw new Error(`Botão com ID ${buttonId} não está visível`);
-    }
+    const buttonInfo = await page.evaluate((el) => ({
+      id: el.id || '',
+      text: (el.innerText || el.textContent || el.value || '').replace(/\s+/g, ' ').trim(),
+    }), button);
+    logger.info(`Botão de ponto encontrado: ${JSON.stringify(buttonInfo)}`);
 
     // Clica no botão
-    await button.click();
-    logger.info(`Botão de ponto clicado (ID: ${buttonId})`);
+    await page.evaluate((el) => el.scrollIntoView({ block: 'center', inline: 'center' }), button);
+    await sleep(300);
+    try {
+      await button.click({ delay: 50 });
+    } catch (err) {
+      logger.warn(`Clique via Puppeteer falhou (${err.message}); tentando clique pelo DOM...`);
+      await page.evaluate((el) => el.click(), button);
+    }
+    logger.info('Botão de ponto clicado');
 
     logger.info('Aguardando confirmação de sucesso: "Registro confirmado"...');
     await page.waitForFunction(
@@ -297,18 +489,17 @@ async function registrarPonto(page) {
     logger.info('Confirmação encontrada: "Registro confirmado".');
     return { success: true };
   } catch (err) {
-    let failureMessage = `Erro ao encontrar/clicar no botão ${buttonId}: ${err.message}`;
+    let failureMessage = `Erro ao encontrar/clicar no botão de ponto: ${err.message}`;
 
     if (err.name === 'TimeoutError') {
       failureMessage =
-        `Botão com ID ${buttonId} não ficou visível após ${buttonAppearTimeout / 1000} segundos de espera`;
+        `Botão de ponto não ficou visível/clicável após ${buttonAppearTimeout / 1000} segundos e reload`;
     } else if (err.message.includes('não encontrado')) {
-      failureMessage = `Botão com ID ${buttonId} não foi encontrado no DOM após a espera`;
-    } else if (err.message.includes('não está visível')) {
-      failureMessage = `Botão com ID ${buttonId} foi encontrado, mas não está visível/clicável`;
+      failureMessage = 'Botão de ponto não foi encontrado no DOM após a espera';
     }
 
     logger.error(failureMessage);
+    await logPointButtonDiagnostics(page);
 
     // Se não encontrou, faz log do HTML para diagnóstico
     try {
